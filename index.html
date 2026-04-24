@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>My Tasks</title>
+
+  <!-- ── PWA Meta Tags ── -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2d6a4f" />
+
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="My Tasks" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <!-- Splash screens for iOS (optional but nice) -->
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --ink: #1a1a18;
+      --muted: #9a9890;
+      --accent: #2d6a4f;
+      --line: #e8e6e1;
+      --done: #b5b3ae;
+      --radius: 12px;
+      --p-high:    #c0392b; --p-high-bg: #fdf0ee;
+      --p-med:     #d4890a; --p-med-bg:  #fef6e7;
+      --p-low:     #2d6a4f; --p-low-bg:  #e8f4ef;
+      --p-none:    #9a9890; --p-none-bg: #eeede9;
+      /* safe area insets for notched phones */
+      --sat: env(safe-area-inset-top);
+      --sab: env(safe-area-inset-bottom);
+    }
+
+    html { height: 100%; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg); color: var(--ink);
+      min-height: 100%; display: flex;
+      justify-content: center;
+      padding: calc(60px + var(--sat)) 16px calc(80px + var(--sab));
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .container { width: 100%; max-width: 520px; }
+
+    /* ── Header ── */
+    header { margin-bottom: 36px; animation: fadeDown 0.5s ease both; }
+    .date-label {
+      font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+    }
+    h1 { font-family: 'DM Serif Display', serif; font-size: 42px; line-height: 1.1; }
+    .stats { margin-top: 8px; font-size: 13px; color: var(--muted); font-weight: 300; }
+
+    /* ── Input ── */
+    .input-row {
+      display: flex; gap: 8px; margin-bottom: 12px;
+      animation: fadeDown 0.5s 0.1s ease both;
+    }
+    .input-row input {
+      flex: 1; padding: 13px 16px;
+      border: 1.5px solid var(--line); border-radius: var(--radius);
+      background: var(--surface); font-family: 'DM Sans', sans-serif;
+      font-size: 16px; /* 16px prevents iOS zoom on focus */
+      color: var(--ink); outline: none; transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .input-row input::placeholder { color: var(--muted); }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input.shake {
+      animation: shake 0.35s ease;
+      border-color: var(--p-high) !important;
+    }
+    .input-row button {
+      padding: 13px 20px; background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius);
+      font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 300;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s; line-height: 1;
+      -webkit-appearance: none;
+    }
+    .input-row button:hover  { opacity: 0.88; }
+    .input-row button:active { transform: scale(0.96); }
+
+    /* ── Priority picker ── */
+    .priority-pick {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 24px;
+      animation: fadeDown 0.5s 0.12s ease both; flex-wrap: wrap;
+    }
+    .priority-pick span {
+      font-size: 12px; color: var(--muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-right: 2px;
+    }
+    .pp-btn {
+      padding: 5px 13px; border-radius: 20px; border: 1.5px solid transparent;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; -webkit-appearance: none;
+    }
+    .pp-btn[data-p="high"] { background: var(--p-high-bg); color: var(--p-high); }
+    .pp-btn[data-p="med"]  { background: var(--p-med-bg);  color: var(--p-med);  }
+    .pp-btn[data-p="low"]  { background: var(--p-low-bg);  color: var(--p-low);  }
+    .pp-btn[data-p="none"] { background: var(--p-none-bg); color: var(--p-none); }
+    .pp-btn.selected { border-color: currentColor; font-weight: 700; }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex; gap: 4px; margin-bottom: 10px;
+      animation: fadeDown 0.5s 0.15s ease both;
+    }
+    .filter-btn {
+      padding: 7px 16px; border: none; border-radius: 20px;
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      cursor: pointer; background: transparent; color: var(--muted);
+      transition: background 0.15s, color 0.15s; -webkit-appearance: none;
+    }
+    .filter-btn.active { background: var(--ink); color: #fff; }
+
+    /* ── Drag hint ── */
+    .drag-hint {
+      font-size: 12px; color: var(--muted); margin-bottom: 10px;
+      display: none; align-items: center; justify-content: flex-end; gap: 5px;
+    }
+
+    /* ── List ── */
+    #todo-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+
+    .todo-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 14px; background: var(--surface);
+      border-radius: var(--radius); border: 1.5px solid var(--line);
+      transition: border-color 0.2s, opacity 0.2s, box-shadow 0.15s;
+      animation: slideIn 0.25s ease both;
+      user-select: none; -webkit-user-select: none;
+    }
+    .todo-item:hover               { border-color: #d0cec9; }
+    .todo-item.done                { opacity: 0.5; }
+    .todo-item[data-priority="high"] { border-left: 3px solid var(--p-high); }
+    .todo-item[data-priority="med"]  { border-left: 3px solid var(--p-med);  }
+    .todo-item[data-priority="low"]  { border-left: 3px solid var(--p-low);  }
+    .todo-item.dragging  { opacity: 0.3; border-style: dashed; box-shadow: none; }
+    .todo-item.drag-over {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(45,106,79,0.15);
+    }
+    /* touch-drag visual */
+    .todo-item.touch-dragging {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transform: scale(1.02);
+      opacity: 0.9;
+      z-index: 100;
+    }
+
+    /* ── Drag handle ── */
+    .drag-handle {
+      cursor: grab; color: #ccc; display: flex; align-items: center;
+      flex-shrink: 0; padding: 6px 4px; transition: color 0.15s;
+      touch-action: none; /* crucial for touch drag */
+    }
+    .drag-handle:hover { color: var(--muted); }
+
+    /* ── Checkbox ── */
+    .check-btn {
+      width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+      border: 2px solid var(--line); background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s, background 0.15s; padding: 0; flex-shrink: 0;
+    }
+    .check-btn:hover { border-color: var(--accent); }
+    .todo-item.done .check-btn { background: var(--accent); border-color: var(--accent); }
+    .check-btn svg { opacity: 0; transition: opacity 0.15s; }
+    .todo-item.done .check-btn svg { opacity: 1; }
+
+    /* ── Priority badge ── */
+    .priority-badge {
+      flex-shrink: 0; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      border: none; font-family: 'DM Sans', sans-serif;
+      transition: transform 0.1s, opacity 0.15s; min-width: 36px; text-align: center;
+    }
+    .priority-badge:active { transform: scale(0.92); }
+    .priority-badge[data-p="high"] { background: var(--p-high-bg); color: var(--p-high); opacity: 1; }
+    .priority-badge[data-p="med"]  { background: var(--p-med-bg);  color: var(--p-med);  opacity: 1; }
+    .priority-badge[data-p="low"]  { background: var(--p-low-bg);  color: var(--p-low);  opacity: 1; }
+    .priority-badge[data-p="none"] {
+      background: var(--p-none-bg); color: var(--p-none);
+      opacity: 0; font-size: 15px; line-height: 1; padding: 2px 8px;
+    }
+    /* on mobile always show the + badge (no hover state) */
+    @media (hover: none) {
+      .priority-badge[data-p="none"] { opacity: 0.45; }
+    }
+    .todo-item:hover .priority-badge[data-p="none"] { opacity: 1; }
+
+    /* ── Task text ── */
+    .todo-text {
+      flex: 1; font-size: 15px; font-weight: 400; line-height: 1.4;
+      transition: color 0.2s; word-break: break-word;
+    }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--done); }
+
+    /* ── Delete btn ── */
+    .delete-btn {
+      background: none; border: none; cursor: pointer; color: var(--line);
+      padding: 6px; border-radius: 6px; display: flex;
+      align-items: center; transition: color 0.15s; flex-shrink: 0;
+      /* always visible on mobile */
+      opacity: 0;
+    }
+    .todo-item:hover .delete-btn { opacity: 1; }
+    .delete-btn:active { color: #c0392b; }
+    @media (hover: none) {
+      .delete-btn { opacity: 0.35; }
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: calc(28px + var(--sab)); left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: #fff; font-size: 13px;
+      padding: 10px 20px; border-radius: 20px; opacity: 0;
+      transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+      white-space: nowrap; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Offline banner ── */
+    .offline-banner {
+      position: fixed; top: var(--sat); left: 0; right: 0;
+      background: #d4890a; color: #fff; text-align: center;
+      font-size: 13px; padding: 8px 16px; z-index: 998;
+      transform: translateY(-100%); transition: transform 0.3s;
+    }
+    .offline-banner.show { transform: translateY(0); }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center; padding: 48px 0; color: var(--muted);
+      font-size: 14px; animation: fadeDown 0.3s ease both;
+    }
+    .empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+    /* ── Actions row ── */
+    .actions-row { margin-top: 20px; display: flex; justify-content: flex-end; }
+    .clear-btn {
+      background: none; border: none; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; color: var(--muted); cursor: pointer;
+      padding: 8px 0; transition: color 0.15s;
+    }
+    .clear-btn:active { color: #c0392b; }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-6px); }
+      40%     { transform: translateX(6px); }
+      60%     { transform: translateX(-4px); }
+      80%     { transform: translateX(4px); }
+    }
+  </style>
+</head>
+<body>
+<div class="offline-banner" id="offline-banner">⚡ You're offline — changes are saved locally</div>
+
+<div class="container">
+  <header>
+    <p class="date-label" id="date-label"></p>
+    <h1>My Tasks</h1>
+    <p class="stats" id="stats-label"></p>
+  </header>
+
+  <div class="input-row">
+    <input type="text" id="task-input" placeholder="Add a new task…"
+           maxlength="120" autocomplete="off" autocorrect="off" spellcheck="false"/>
+    <button id="add-btn" title="Add task">+</button>
+  </div>
+
+  <div class="priority-pick">
+    <span>Priority:</span>
+    <button class="pp-btn" data-p="high">High</button>
+    <button class="pp-btn" data-p="med">Medium</button>
+    <button class="pp-btn" data-p="low">Low</button>
+    <button class="pp-btn selected" data-p="none">None</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="active">Active</button>
+    <button class="filter-btn" data-filter="done">Done</button>
+  </div>
+
+  <div class="drag-hint" id="drag-hint">
+    <svg width="10" height="14" viewBox="0 0 10 14" fill="none">
+      <circle cx="3" cy="2.5"  r="1.2" fill="currentColor"/>
+      <circle cx="7" cy="2.5"  r="1.2" fill="currentColor"/>
+      <circle cx="3" cy="7"    r="1.2" fill="currentColor"/>
+      <circle cx="7" cy="7"    r="1.2" fill="currentColor"/>
+      <circle cx="3" cy="11.5" r="1.2" fill="currentColor"/>
+      <circle cx="7" cy="11.5" r="1.2" fill="currentColor"/>
+    </svg>
+    Hold &amp; drag handle to reorder
+  </div>
+
+  <ul id="todo-list"></ul>
+
+  <div class="actions-row" id="actions-row" style="display:none;">
+    <button class="clear-btn" id="clear-btn">Clear completed</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  const input         = document.getElementById('task-input');
+  const addBtn        = document.getElementById('add-btn');
+  const list          = document.getElementById('todo-list');
+  const statsEl       = document.getElementById('stats-label');
+  const dateEl        = document.getElementById('date-label');
+  const actionsRow    = document.getElementById('actions-row');
+  const clearBtn      = document.getElementById('clear-btn');
+  const filterBtns    = document.querySelectorAll('.filter-btn');
+  const ppBtns        = document.querySelectorAll('.pp-btn');
+  const dragHint      = document.getElementById('drag-hint');
+  const toast         = document.getElementById('toast');
+  const offlineBanner = document.getElementById('offline-banner');
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  // Migrate from older storage keys if present
+  let tasks = [];
+  const storageKey = 'tasks_v3';
+  const raw = localStorage.getItem(storageKey);
+  if (raw) {
+    tasks = JSON.parse(raw);
+  } else {
+    // migrate from v1/v2 if they exist
+    const legacy = localStorage.getItem('tasks_v2') || localStorage.getItem('tasks');
+    if (legacy) {
+      tasks = JSON.parse(legacy).map(t => ({ ...t, priority: t.priority ?? 'none' }));
+      localStorage.setItem(storageKey, JSON.stringify(tasks));
+      localStorage.removeItem('tasks_v2');
+      localStorage.removeItem('tasks');
+    }
+  }
+
+  let filter      = 'all';
+  let newPriority = 'none';
+  let dragSrcId   = null;
+  let toastTimer  = null;
+
+  const PRIORITY_CYCLE = ['high', 'med', 'low', 'none'];
+  const PRIORITY_LABEL = { high: 'High', med: 'Med', low: 'Low', none: '+' };
+
+  // ── Date ───────────────────────────────────────────────────────────────────
+  dateEl.textContent = new Date().toLocaleDateString('en-US',
+    { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // ── Offline indicator ──────────────────────────────────────────────────────
+  function updateOnline() {
+    offlineBanner.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online',  updateOnline);
+  window.addEventListener('offline', updateOnline);
+  updateOnline();
+
+  // ── Persist ────────────────────────────────────────────────────────────────
+  function save() { localStorage.setItem(storageKey, JSON.stringify(tasks)); }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // ── Priority picker ────────────────────────────────────────────────────────
+  function setPickerPriority(p) {
+    newPriority = p;
+    ppBtns.forEach(b => b.classList.toggle('selected', b.dataset.p === p));
+  }
+  ppBtns.forEach(btn => btn.addEventListener('click', () => setPickerPriority(btn.dataset.p)));
+
+  // ── CRUD ───────────────────────────────────────────────────────────────────
+  function addTask() {
+    const text = input.value.trim();
+    if (!text) return;
+    if (tasks.some(t => t.text.toLowerCase() === text.toLowerCase())) {
+      input.classList.add('shake');
+      input.addEventListener('animationend', () => input.classList.remove('shake'), { once: true });
+      showToast('Task already exists!');
+      return;
+    }
+    tasks.unshift({ id: Date.now(), text, done: false, priority: newPriority });
+    input.value = '';
+    setPickerPriority('none');
+    save(); render();
+  }
+
+  function toggleTask(id) {
+    tasks = tasks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    save(); render();
+  }
+
+  function cyclePriority(id) {
+    tasks = tasks.map(t => {
+      if (t.id !== id) return t;
+      const idx  = PRIORITY_CYCLE.indexOf(t.priority ?? 'none');
+      const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length];
+      return { ...t, priority: next };
+    });
+    save(); render();
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    save(); render();
+  }
+
+  function clearDone() {
+    tasks = tasks.filter(t => !t.done);
+    save(); render();
+  }
+
+  // ── Mouse drag (desktop) ───────────────────────────────────────────────────
+  function onDragStart(e) {
+    dragSrcId = Number(e.currentTarget.dataset.id);
+    setTimeout(() => e.currentTarget.classList.add('dragging'), 0);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+  function onDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    e.currentTarget.setAttribute('draggable', 'false');
+    list.querySelectorAll('.todo-item').forEach(el => el.classList.remove('drag-over'));
+    dragSrcId = null;
+  }
+  function onDragOver(e) {
+    if (!dragSrcId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    list.querySelectorAll('.todo-item').forEach(el => el.classList.remove('drag-over'));
+    if (Number(e.currentTarget.dataset.id) !== dragSrcId)
+      e.currentTarget.classList.add('drag-over');
+  }
+  function onDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget))
+      e.currentTarget.classList.remove('drag-over');
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    const targetId = Number(e.currentTarget.dataset.id);
+    if (!dragSrcId || targetId === dragSrcId) return;
+    const si = tasks.findIndex(t => t.id === dragSrcId);
+    const ti = tasks.findIndex(t => t.id === targetId);
+    if (si === -1 || ti === -1) return;
+    const [moved] = tasks.splice(si, 1);
+    tasks.splice(ti, 0, moved);
+    save(); render();
+  }
+
+  // ── Touch drag (mobile) ────────────────────────────────────────────────────
+  let touchDragId  = null;
+  let touchClone   = null;
+  let touchOffsetY = 0;
+
+  function touchItemFromY(y) {
+    const items = [...list.querySelectorAll('.todo-item:not(.touch-dragging)')];
+    return items.find(el => {
+      const r = el.getBoundingClientRect();
+      return y >= r.top && y <= r.bottom;
+    });
+  }
+
+  function onTouchStart(e, li) {
+    if (!e.target.closest('.drag-handle')) return;
+    e.preventDefault();
+    touchDragId = Number(li.dataset.id);
+    const touch = e.touches[0];
+    const rect  = li.getBoundingClientRect();
+    touchOffsetY = touch.clientY - rect.top;
+
+    // Clone for visual ghost
+    touchClone = li.cloneNode(true);
+    touchClone.style.cssText = `
+      position:fixed; left:${rect.left}px; top:${rect.top}px;
+      width:${rect.width}px; opacity:0.85; z-index:200;
+      pointer-events:none; border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.18);
+      transition:none;
+    `;
+    document.body.appendChild(touchClone);
+    li.classList.add('touch-dragging');
+    li.style.opacity = '0.3';
+  }
+
+  function onTouchMove(e) {
+    if (!touchDragId) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const y = touch.clientY - touchOffsetY;
+    if (touchClone) {
+      touchClone.style.top = y + 'px';
+    }
+    // highlight target
+    list.querySelectorAll('.todo-item').forEach(el => el.classList.remove('drag-over'));
+    const target = touchItemFromY(touch.clientY);
+    if (target && Number(target.dataset.id) !== touchDragId)
+      target.classList.add('drag-over');
+  }
+
+  function onTouchEnd(e) {
+    if (!touchDragId) return;
+    const touch = e.changedTouches[0];
+    const target = touchItemFromY(touch.clientY);
+
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    list.querySelectorAll('.todo-item').forEach(el => {
+      el.classList.remove('drag-over', 'touch-dragging');
+      el.style.opacity = '';
+    });
+
+    if (target) {
+      const tid = Number(target.dataset.id);
+      if (tid !== touchDragId) {
+        const si = tasks.findIndex(t => t.id === touchDragId);
+        const ti = tasks.findIndex(t => t.id === tid);
+        if (si !== -1 && ti !== -1) {
+          const [moved] = tasks.splice(si, 1);
+          tasks.splice(ti, 0, moved);
+          save(); render();
+        }
+      }
+    }
+    touchDragId = null;
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function render() {
+    const visible = tasks.filter(t =>
+      filter === 'all'    ? true :
+      filter === 'active' ? !t.done : t.done
+    );
+
+    list.innerHTML = '';
+    dragHint.style.display = visible.length > 1 ? 'flex' : 'none';
+
+    if (visible.length === 0) {
+      const msgs  = { all: 'Nothing here yet', active: 'All caught up!', done: 'No completed tasks' };
+      const icons = { all: '📋', active: '✅', done: '🎯' };
+      list.innerHTML = `<div class="empty"><div class="empty-icon">${icons[filter]}</div>${msgs[filter]}</div>`;
+    } else {
+      visible.forEach(t => {
+        const p  = t.priority ?? 'none';
+        const li = document.createElement('li');
+        li.className        = 'todo-item' + (t.done ? ' done' : '');
+        li.dataset.id       = t.id;
+        li.dataset.priority = p;
+
+        li.innerHTML = `
+          <div class="drag-handle" title="Hold to reorder">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+              <circle cx="3"  cy="3"  r="1.4" fill="currentColor"/>
+              <circle cx="7"  cy="3"  r="1.4" fill="currentColor"/>
+              <circle cx="3"  cy="8"  r="1.4" fill="currentColor"/>
+              <circle cx="7"  cy="8"  r="1.4" fill="currentColor"/>
+              <circle cx="3"  cy="13" r="1.4" fill="currentColor"/>
+              <circle cx="7"  cy="13" r="1.4" fill="currentColor"/>
+            </svg>
+          </div>
+          <button class="check-btn" data-id="${t.id}" title="Toggle done">
+            <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+              <path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="priority-badge" data-p="${p}" data-id="${t.id}"
+            title="${p === 'none' ? 'Tap to set priority' : 'Tap to change: ' + p}"
+          >${PRIORITY_LABEL[p]}</button>
+          <span class="todo-text">${escHtml(t.text)}</span>
+          <button class="delete-btn" data-id="${t.id}" title="Delete task">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 2L12 12M12 2L2 12" stroke="currentColor"
+                    stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>`;
+
+        // Mouse drag — enable only via handle
+        const handle = li.querySelector('.drag-handle');
+        handle.addEventListener('mousedown', () => li.setAttribute('draggable', 'true'));
+        li.addEventListener('dragstart',  onDragStart);
+        li.addEventListener('dragend',    onDragEnd);
+        li.addEventListener('dragover',   onDragOver);
+        li.addEventListener('dragleave',  onDragLeave);
+        li.addEventListener('drop',       onDrop);
+
+        // Touch drag
+        li.addEventListener('touchstart', e => onTouchStart(e, li), { passive: false });
+
+        list.appendChild(li);
+      });
+    }
+
+    const done  = tasks.filter(t => t.done).length;
+    const total = tasks.length;
+    statsEl.textContent = total === 0
+      ? 'Start adding tasks below'
+      : `${done} of ${total} completed`;
+
+    actionsRow.style.display = tasks.some(t => t.done) ? 'flex' : 'none';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Global events ──────────────────────────────────────────────────────────
+  addBtn.addEventListener('click', addTask);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+  list.addEventListener('click', e => {
+    const checkBtn  = e.target.closest('.check-btn');
+    const deleteBtn = e.target.closest('.delete-btn');
+    const badge     = e.target.closest('.priority-badge');
+    if (checkBtn)  toggleTask(Number(checkBtn.dataset.id));
+    if (deleteBtn) deleteTask(Number(deleteBtn.dataset.id));
+    if (badge)     cyclePriority(Number(badge.dataset.id));
+  });
+
+  // Touch drag move/end on document (fires even if finger moves off item)
+  document.addEventListener('touchmove', onTouchMove, { passive: false });
+  document.addEventListener('touchend',  onTouchEnd);
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  clearBtn.addEventListener('click', clearDone);
+
+  // ── Service Worker registration ────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>
