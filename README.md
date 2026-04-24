@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # 📋 My Tasks — PWA To-Do App
+=======
+📋 My Tasks — PWA To-Do App
+>>>>>>> 7ab9ec9172a6b9d609f1ad4cf7df44486b78fd7e
 
 A lightweight, installable priority to-do app. Works offline. No frameworks, no build tools — just HTML, CSS, and JS.
 
@@ -139,4 +143,8 @@ Then open `http://localhost:8080`
 ---
 
 ## 📄 License
+<<<<<<< HEAD
 MIT — free to use, modify, and distribute.
+=======
+MIT — free to use, modify, and distribute.
+>>>>>>> 7ab9ec9172a6b9d609f1ad4cf7df44486b78fd7e
